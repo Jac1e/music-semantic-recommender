@@ -41,7 +41,7 @@ if selected:
     st.markdown(f"### Songs similar to *{selected}*")
 
     # For now, use a simple cosine similarity approach on numeric features
-    # This will be replaced with Leo's MusicRecommender once we integrate fully
+    # This will be replaced with MusicRecommender once integrate fully
     from sklearn.preprocessing import StandardScaler
     from sklearn.metrics.pairwise import cosine_similarity
     import numpy as np
