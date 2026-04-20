@@ -62,11 +62,17 @@ if selected:
     query_vec = features[song_idx].reshape(1, -1)
     scores = cosine_similarity(query_vec, features)[0]
 
-    # Get top-k, excluding the song itself
-    top_indices = np.argsort(scores)[::-1][1:k+1]
+    # Get more results than needed, then deduplicate
+    top_indices = np.argsort(scores)[::-1][1:k*3]
 
     results = df.iloc[top_indices][["track_name", "artists", "track_genre", "popularity"]].copy()
     results["similarity_score"] = scores[top_indices]
+
+    # Remove duplicates — same track name and artist
+    results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
+
+    # Take only top-k after deduplication
+    results = results.head(k)
     results = results.reset_index(drop=True)
     results.index = results.index + 1  # Start numbering from 1
 

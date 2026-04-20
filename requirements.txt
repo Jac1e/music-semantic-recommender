@@ -3,3 +3,5 @@ numpy
 scikit-learn
 sentence-transformers
 jupyter
+streamlit
+plotly
