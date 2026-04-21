@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -6,8 +7,9 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
+from .data_loader import PROJECT_ROOT
 from .preprocess import clean_text, prepare_lyrics
-from .text_embed import embed_texts, load_embedding_model
+from .text_embed import load_embedding_model
 
 
 DEFAULT_NUMERIC_COLUMNS = [
@@ -25,6 +27,7 @@ DEFAULT_NUMERIC_COLUMNS = [
 ]
 
 DEFAULT_RESULT_COLUMNS = ["track_name", "artists", "track_genre"]
+DEFAULT_LYRICS_EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "processed" / "lyrics_embeddings.npy"
 
 
 @dataclass
@@ -42,8 +45,7 @@ class MusicRecommender:
         numeric_columns: list[str] | None = None,
         result_columns: list[str] | None = None,
         model_name: str = "all-MiniLM-L6-v2",
-        batch_size: int = 32,
-        show_progress_bar: bool = True,
+        lyrics_embeddings_path: str | Path = DEFAULT_LYRICS_EMBEDDINGS_PATH,
     ) -> "MusicRecommender":
         numeric_columns = numeric_columns or DEFAULT_NUMERIC_COLUMNS
         result_columns = result_columns or DEFAULT_RESULT_COLUMNS
@@ -54,13 +56,26 @@ class MusicRecommender:
         scaler = StandardScaler()
         numeric_features = scaler.fit_transform(numeric_data)
 
+        embeddings_path = Path(lyrics_embeddings_path).resolve()
+        if not embeddings_path.exists():
+            raise FileNotFoundError(
+                f"Precomputed lyrics embeddings not found: {embeddings_path}. "
+                "Run the embedding precompute step before fitting MusicRecommender."
+            )
+
+        text_features = np.load(embeddings_path)
+        if text_features.ndim != 2:
+            raise ValueError(
+                f"Expected 2D lyrics embeddings, got shape {text_features.shape} at {embeddings_path}."
+            )
+        if text_features.shape[0] != len(prepared):
+            raise ValueError(
+                "Lyrics embedding row count does not match prepared dataset rows. "
+                f"Embeddings rows={text_features.shape[0]}, prepared rows={len(prepared)}. "
+                "Regenerate the .npy file from the same processed dataset."
+            )
+
         model = load_embedding_model(model_name)
-        text_features = embed_texts(
-            prepared["lyrics_clean"].tolist(),
-            model=model,
-            batch_size=batch_size,
-            show_progress_bar=show_progress_bar,
-        )
 
         features = np.hstack([numeric_features, text_features])
         return cls(
