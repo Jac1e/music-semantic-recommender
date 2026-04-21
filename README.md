@@ -142,6 +142,20 @@ From the project root directory, run:
 streamlit run app/main.py
 ```
 
+## Precompute Lyrics Embeddings
+To avoid recomputing lyric embeddings at runtime, precompute them once and save to `data/processed/lyrics_embeddings.npy`:
+
+```bash
+python -m src.precompute_lyrics_embeddings
+```
+
+Optional flags:
+
+```bash
+python -m src.precompute_lyrics_embeddings --batch-size 64 --hide-progress
+python -m src.precompute_lyrics_embeddings --output data/processed/lyrics_embeddings.npy
+```
+
 ## Expected Inputs and Outputs
 ### Inputs
 - a song title selected by the user
