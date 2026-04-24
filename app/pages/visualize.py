@@ -8,7 +8,6 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from src.data_loader import load_spotify_with_lyrics
 from src.reduction import compute_pca_projection
 
 st.set_page_config(page_title="Explore Songs", page_icon="📊", layout="wide")
@@ -17,7 +16,7 @@ st.markdown("See how songs relate to each other in a 2D PCA space, colored by ge
 
 @st.cache_data
 def get_data():
-    df = load_spotify_with_lyrics()
+    df = pd.read_csv(project_root / "data" / "processed" / "song_feature_vectors.csv")
     return df
 
 df = get_data()
@@ -90,4 +89,3 @@ with st.expander("ℹ️ About this visualization"):
         or {(variance_ratio[0] + variance_ratio[1]):.1%} combined.
         """
     )
-    
