@@ -299,8 +299,6 @@ with col_chart:
                 <div class="coming-soon-icon">🔮</div>
                 <div class="coming-soon-title">Cluster visualization coming soon</div>
                 <div class="coming-soon-desc">
-                    Once Michael's clustering module is integrated, you'll be able to
-                    explore natural song groupings that go beyond genre labels.
                 </div>
             </div>
             """,
