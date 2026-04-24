@@ -317,30 +317,47 @@ if selected:
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-    # Compute recommendations
-    @st.cache_data
-    def compute_similarity(dataframe):
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        features = scaler.fit_transform(dataframe[feature_cols].fillna(0))
-        return features
+# Compute recommendations using MusicRecommender (audio + lyrics combined)
+    from src.similarity import MusicRecommender
 
-    features = compute_similarity(df)
-    from sklearn.metrics.pairwise import cosine_similarity
-    query_vec = features[song_idx].reshape(1, -1)
-    scores = cosine_similarity(query_vec, features)[0]
+    @st.cache_resource
+    def get_recommender():
+        raw_df = load_spotify_with_lyrics()
+        return MusicRecommender.fit(raw_df)
 
-    top_indices = np.argsort(scores)[::-1][1:k*3]
-    results = df.iloc[top_indices].copy()
-    results["similarity_score"] = scores[top_indices]
-    # Remove the selected song itself (same name + artist under different genres)
-    results = results[
-        ~((results["track_name"] == selected_song["track_name"]) &
-          (results["artists"] == selected_song["artists"]))
+    recommender = get_recommender()
+
+    # Find the song index in the recommender's processed dataframe
+    rec_df = recommender.df
+    match = rec_df[
+        (rec_df["track_name"] == selected_song["track_name"]) &
+        (rec_df["artists"] == selected_song["artists"])
     ]
-    results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
-    results = results.head(k)
 
+    if len(match) > 0:
+        rec_song_idx = match.index[0]
+        raw_results = recommender.search(song_idx=rec_song_idx, k=k * 3)
+
+        # Remove the selected song itself and deduplicate
+        results = raw_results[
+            ~((raw_results["track_name"] == selected_song["track_name"]) &
+              (raw_results["artists"] == selected_song["artists"]))
+        ].copy()
+        results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
+        results = results.head(k)
+        results = results.rename(columns={"score": "similarity_score"})
+
+        # Merge back full song data for radar charts
+        results = results.merge(
+            df[["track_name", "artists", "track_genre", "popularity"] + radar_features].drop_duplicates(
+                subset=["track_name", "artists"], keep="first"
+            ),
+            on=["track_name", "artists"],
+            how="left",
+            suffixes=("", "_dup"),
+        )
+    else:
+        results = pd.DataFrame()
     st.markdown(
         f"""
         <div style="text-align: center; margin-bottom: 1.5rem;">
