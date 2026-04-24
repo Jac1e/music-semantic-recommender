@@ -782,7 +782,17 @@ if query and model is not None:
         query_embedding = model.encode([query])
         from sklearn.metrics.pairwise import cosine_similarity
         scores = cosine_similarity(query_embedding, lyrics_embeddings)[0]
-        top_indices = np.argsort(scores)[::-1][:k]
+        raw_indices = np.argsort(scores)[::-1][:k * 3]
+        # Deduplicate by track_name + artists, keep highest scoring
+        seen = set()
+        top_indices = []
+        for idx in raw_indices:
+            key = (df.iloc[idx]["track_name"], df.iloc[idx]["artists"])
+            if key not in seen:
+                seen.add(key)
+                top_indices.append(idx)
+            if len(top_indices) == k:
+                break
 
     # Mood banner
     st.markdown(
