@@ -325,39 +325,65 @@ if selected:
         raw_df = load_spotify_with_lyrics()
         return MusicRecommender.fit(raw_df)
 
-    recommender = get_recommender()
+    @st.cache_resource
+    def compute_similarity_fallback(dataframe):
+        """Fallback: audio-only similarity if MusicRecommender drops the song."""
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        features = scaler.fit_transform(dataframe[feature_cols].fillna(0))
+        return features
 
-    # Find the song index in the recommender's processed dataframe
-    rec_df = recommender.df
-    match = rec_df[
-        (rec_df["track_name"] == selected_song["track_name"]) &
-        (rec_df["artists"] == selected_song["artists"])
-    ]
+    try:
+        recommender = get_recommender()
 
-    if len(match) > 0:
-        rec_song_idx = match.index[0]
-        raw_results = recommender.search(song_idx=rec_song_idx, k=k * 3)
+        # Find the song index in the recommender's processed dataframe
+        rec_df = recommender.df
+        match = rec_df[
+            (rec_df["track_name"] == selected_song["track_name"]) &
+            (rec_df["artists"] == selected_song["artists"])
+        ]
 
-        # Remove the selected song itself and deduplicate
-        results = raw_results[
-            ~((raw_results["track_name"] == selected_song["track_name"]) &
-              (raw_results["artists"] == selected_song["artists"]))
-        ].copy()
+        if len(match) > 0:
+            rec_song_idx = match.index[0]
+            raw_results = recommender.search(song_idx=rec_song_idx, k=k * 3)
+
+            # Remove the selected song itself and deduplicate
+            results = raw_results[
+                ~((raw_results["track_name"] == selected_song["track_name"]) &
+                  (raw_results["artists"] == selected_song["artists"]))
+            ].copy()
+            results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
+            results = results.head(k)
+            results = results.rename(columns={"score": "similarity_score"})
+
+            # Merge back full song data for radar charts
+            results = results.merge(
+                df[["track_name", "artists", "track_genre", "popularity"] + radar_features].drop_duplicates(
+                    subset=["track_name", "artists"], keep="first"
+                ),
+                on=["track_name", "artists"],
+                how="left",
+                suffixes=("", "_dup"),
+            )
+        else:
+            raise ValueError("Song not found in recommender (missing lyrics).")
+
+    except Exception:
+        # Fallback to audio-only similarity
+        from sklearn.metrics.pairwise import cosine_similarity
+        features = compute_similarity_fallback(df)
+        query_vec = features[song_idx].reshape(1, -1)
+        scores = cosine_similarity(query_vec, features)[0]
+
+        top_indices = np.argsort(scores)[::-1][1:k*3]
+        results = df.iloc[top_indices].copy()
+        results["similarity_score"] = scores[top_indices]
+        results = results[
+            ~((results["track_name"] == selected_song["track_name"]) &
+              (results["artists"] == selected_song["artists"]))
+        ]
         results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
         results = results.head(k)
-        results = results.rename(columns={"score": "similarity_score"})
-
-        # Merge back full song data for radar charts
-        results = results.merge(
-            df[["track_name", "artists", "track_genre", "popularity"] + radar_features].drop_duplicates(
-                subset=["track_name", "artists"], keep="first"
-            ),
-            on=["track_name", "artists"],
-            how="left",
-            suffixes=("", "_dup"),
-        )
-    else:
-        results = pd.DataFrame()
     st.markdown(
         f"""
         <div style="text-align: center; margin-bottom: 1.5rem;">

@@ -8,5 +8,8 @@ dependencies:
   - numpy
   - scikit-learn
   - jupyter
+  - streamlit
+  - plotly
+  - pytest
   - pip:
       - sentence-transformers

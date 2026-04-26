@@ -5,3 +5,5 @@ sentence-transformers
 jupyter
 streamlit
 plotly
+torch
+pytest
