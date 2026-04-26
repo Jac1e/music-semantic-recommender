@@ -23,7 +23,7 @@ st.markdown(
     }
     .main-header h1 {
         font-size: 3.5rem;
-        color: #a855f7;
+        color: #a855f7 !important;
         font-weight: 800;
         margin-bottom: 0;
     }
@@ -57,7 +57,7 @@ st.markdown(
         margin-bottom: 0.3rem;
     }
     .mood-ticker-text {
-        color: #a855f7;
+        color: #a855f7 !important;
         font-size: 1.1rem;
         font-style: italic;
         font-weight: 500;

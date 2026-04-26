@@ -26,9 +26,7 @@ st.markdown(
     }
     .rec-header h1 {
         font-size: 2.8rem;
-        background: linear-gradient(120deg, #e84393 0%, #a855f7 50%, #6c5ce7 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #a855f7 !important;
         font-weight: 800;
     }
     .rec-subtitle {

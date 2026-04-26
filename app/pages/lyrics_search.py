@@ -562,7 +562,7 @@ if t["dark"]:
 else:
     chip_styles = """
     .chip-pink { background: #ffe0ec; color: #e84393; }
-    .chip-purple { background: #f3e8ff; color: #a855f7; }
+    .chip-purple { background: #f3e8ff; color: #a855f7 !important; }
     .chip-blue { background: #dbeafe; color: #3b82f6; }
     .chip-green { background: #d1fae5; color: #059669; }
     .chip-orange { background: #ffedd5; color: #ea580c; }
@@ -580,7 +580,7 @@ st.markdown(
     }}
     .search-header h1 {{
         font-size: 2.8rem;
-        color: {header_text_color};
+        color: {header_text_color} !important;
         font-weight: 800;
     }}
     .search-subtitle {{
