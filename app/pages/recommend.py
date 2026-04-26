@@ -259,12 +259,19 @@ def get_spotify_search_url(track_name, artist):
 
 
 # Song selector
-selected = st.selectbox(
-    "Choose a song:",
+selected_songs = st.multiselect(
+    "Choose up to 5 songs to blend their vibes (Optional):",
     options=df["display_name"].tolist(),
-    index=None,
-    placeholder="Start typing a song or artist name...",
+    max_selections=5,
+    placeholder="Start typing song or artist names...",
 )
+
+col_toggle, col_vibe = st.columns([1, 1])
+with col_toggle:
+    st.markdown("<br>", unsafe_allow_html=True)
+    use_pure_audio = st.toggle("Pure Audio Recommendation (Ignores lyrics, includes Classical)", value=True)
+with col_vibe:
+    vibe_modifier = st.text_input("AI Vibe Modifier (Optional)", placeholder="e.g., calm piano, high energy...", key="vibe_modifier")
 
 col_slider, col_spacer = st.columns([1, 3])
 with col_slider:
@@ -272,53 +279,43 @@ with col_slider:
 
 st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-if selected:
-    song_idx = df[df["display_name"] == selected].index[0]
-    selected_song = df.iloc[song_idx]
-    spotify_url_selected = get_spotify_search_url(selected_song["track_name"], selected_song["artists"])
+if selected_songs or vibe_modifier:
+    # Selected songs display
+    selected_song_rows = []
+    if selected_songs:
+        st.markdown("### 🎵 Your Selected Vibes")
+        cols = st.columns(len(selected_songs))
+        
+        for i, song_name in enumerate(selected_songs):
+            song_idx = df[df["display_name"] == song_name].index[0]
+            song_data = df.iloc[song_idx]
+            selected_song_rows.append(song_data)
+            
+            with cols[i]:
+                st.markdown(
+                    f"""
+                    <div class="selected-song-card" style="padding: 1rem;">
+                        <div class="selected-song-title" style="font-size: 1.1rem;">{song_data['track_name']}</div>
+                        <div class="selected-song-artist" style="font-size: 0.9rem;">{song_data['artists']}</div>
+                        <span class="genre-tag genre-tag-purple" style="font-size: 0.7rem;">
+                            {song_data['track_genre']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-    # Selected song display
-    col_sel_info, col_sel_radar = st.columns([3, 2])
-
-    with col_sel_info:
-        st.markdown(
-            f"""
-            <div class="selected-song-card">
-                <div class="selected-song-label">🎵 YOUR SELECTED SONG</div>
-                <div class="selected-song-title">{selected_song['track_name']}</div>
-                <div class="selected-song-artist">{selected_song['artists']}</div>
-                <span class="genre-tag genre-tag-purple" style="margin-top: 0.8rem;">
-                    {selected_song['track_genre']}
-                </span>
-                <div style="margin-top: 0.8rem;">
-                    <a href="{spotify_url_selected}" target="_blank"
-                       style="display: inline-block;
-                              background: linear-gradient(120deg, #1DB954, #1ed760);
-                              color: white;
-                              padding: 0.4rem 1.2rem;
-                              border-radius: 50px;
-                              text-decoration: none;
-                              font-weight: 600;
-                              font-size: 0.85rem;">
-                        🎧 Listen on Spotify
-                    </a>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with col_sel_radar:
-        fig = make_radar_chart(
-            selected_song, radar_features, radar_labels,
-            color="#e84393", fill_color="rgba(232, 67, 147, 0.15)",
-        )
-        st.plotly_chart(fig, use_container_width=True, key="selected_radar")
-
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        # Compute average features for the combined vibe radar
+        avg_selected_song = pd.Series(dtype="object")
+        for feat in radar_features:
+            avg_selected_song[feat] = np.mean([song[feat] for song in selected_song_rows])
+        avg_selected_song["track_name"] = "Combined Vibe"
+        
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
 # Compute recommendations using MusicRecommender (audio + lyrics combined)
     from src.similarity import MusicRecommender
+    from src.preprocess import clean_text
 
     @st.cache_resource
     def get_recommender():
@@ -334,53 +331,106 @@ if selected:
         return features
 
     try:
+        if use_pure_audio:
+            raise ValueError("Forced pure audio mode.")
+            
         recommender = get_recommender()
-
-        # Find the song index in the recommender's processed dataframe
         rec_df = recommender.df
-        match = rec_df[
-            (rec_df["track_name"] == selected_song["track_name"]) &
-            (rec_df["artists"] == selected_song["artists"])
-        ]
+        
+        rec_song_indices = []
+        for song_data in selected_song_rows:
+            match = rec_df[
+                (rec_df["track_name"] == song_data["track_name"]) &
+                (rec_df["artists"] == song_data["artists"])
+            ]
+            if len(match) > 0:
+                rec_song_indices.append(match.index[0])
+            else:
+                raise ValueError("A song was not found in recommender (missing lyrics).")
 
-        if len(match) > 0:
-            rec_song_idx = match.index[0]
-            raw_results = recommender.search(song_idx=rec_song_idx, k=k * 3)
-
-            # Remove the selected song itself and deduplicate
-            results = raw_results[
-                ~((raw_results["track_name"] == selected_song["track_name"]) &
-                  (raw_results["artists"] == selected_song["artists"]))
-            ].copy()
-            results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
-            results = results.head(k)
-            results = results.rename(columns={"score": "similarity_score"})
-
-            # Merge back full song data for radar charts
-            results = results.merge(
-                df[["track_name", "artists", "track_genre", "popularity"] + radar_features].drop_duplicates(
-                    subset=["track_name", "artists"], keep="first"
-                ),
-                on=["track_name", "artists"],
-                how="left",
-                suffixes=("", "_dup"),
-            )
+        if rec_song_indices:
+            query_vec = np.mean([recommender.features[i] for i in rec_song_indices], axis=0).reshape(1, -1)
         else:
-            raise ValueError("Song not found in recommender (missing lyrics).")
+            query_vec = None
+            
+        if vibe_modifier:
+            audio_query_text_vec = recommender.model.encode([clean_text(vibe_modifier)], convert_to_numpy=True)
+            if not hasattr(recommender, 'bridge_model'):
+                recommender.train_cross_modal_bridge()
+            query_audio_pred = recommender.bridge_model.predict(audio_query_text_vec)
+            
+            # Pad text features with zeros because vibe modifier only specifies audio structure
+            vibe_vec = np.hstack([query_audio_pred, np.zeros((1, recommender.features.shape[1] - recommender.numeric_feature_count))])
+            
+            if query_vec is not None:
+                query_vec = np.mean(np.vstack([query_vec, vibe_vec]), axis=0).reshape(1, -1)
+            else:
+                query_vec = vibe_vec
+
+        from sklearn.metrics.pairwise import cosine_similarity
+        scores = cosine_similarity(query_vec, recommender.features)[0]
+        top_indices = np.argsort(scores)[::-1][:k*3]
+        
+        columns = ["track_name", "artists", "track_genre"]
+        raw_results = recommender.df.iloc[top_indices][columns].copy()
+        raw_results["score"] = scores[top_indices]
+
+        # Remove the selected songs themselves and deduplicate
+        selected_names = [s["track_name"] for s in selected_song_rows]
+        selected_artists = [s["artists"] for s in selected_song_rows]
+        
+        results = raw_results[
+            ~raw_results.apply(lambda row: row["track_name"] in selected_names and row["artists"] in selected_artists, axis=1)
+        ].copy()
+        
+        results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
+        results = results.head(k)
+        results = results.rename(columns={"score": "similarity_score"})
+
+        # Merge back full song data for radar charts
+        results = results.merge(
+            df[["track_name", "artists", "track_genre", "popularity"] + radar_features].drop_duplicates(
+                subset=["track_name", "artists"], keep="first"
+            ),
+            on=["track_name", "artists"],
+            how="left",
+            suffixes=("", "_dup"),
+        )
 
     except Exception:
         # Fallback to audio-only similarity
         from sklearn.metrics.pairwise import cosine_similarity
         features = compute_similarity_fallback(df)
-        query_vec = features[song_idx].reshape(1, -1)
+        
+        if selected_song_rows:
+            song_indices = [df[df["display_name"] == s["display_name"]].index[0] for s in selected_song_rows]
+            query_vec = np.mean(features[song_indices], axis=0).reshape(1, -1)
+        else:
+            query_vec = None
+            
+        if vibe_modifier:
+            recommender = get_recommender()
+            audio_query_text_vec = recommender.model.encode([clean_text(vibe_modifier)], convert_to_numpy=True)
+            if not hasattr(recommender, 'bridge_model'):
+                recommender.train_cross_modal_bridge()
+            query_audio_pred = recommender.bridge_model.predict(audio_query_text_vec)
+            
+            if query_vec is not None:
+                query_vec = np.mean(np.vstack([query_vec, query_audio_pred]), axis=0).reshape(1, -1)
+            else:
+                query_vec = query_audio_pred
+        
         scores = cosine_similarity(query_vec, features)[0]
 
-        top_indices = np.argsort(scores)[::-1][1:k*3]
+        top_indices = np.argsort(scores)[::-1][:max(1, k+len(selected_songs))*3]
         results = df.iloc[top_indices].copy()
         results["similarity_score"] = scores[top_indices]
+        
+        selected_names = [s["track_name"] for s in selected_song_rows]
+        selected_artists = [s["artists"] for s in selected_song_rows]
+        
         results = results[
-            ~((results["track_name"] == selected_song["track_name"]) &
-              (results["artists"] == selected_song["artists"]))
+            ~results.apply(lambda row: row["track_name"] in selected_names and row["artists"] in selected_artists, axis=1)
         ]
         results = results.drop_duplicates(subset=["track_name", "artists"], keep="first")
         results = results.head(k)
@@ -388,9 +438,9 @@ if selected:
         f"""
         <div style="text-align: center; margin-bottom: 1.5rem;">
             <span style="font-size: 1.3rem; color: #333;">
-                Songs similar to
+                Songs matching your
                 <span style="color: #a855f7; font-weight: 700;">
-                    {selected_song['track_name']}
+                    Combined Vibe
                 </span>
             </span>
         </div>
@@ -435,9 +485,35 @@ if selected:
             )
 
         with col_radar:
-            fig = make_comparison_radar(
-                selected_song, song, radar_features, radar_labels,
-            )
+            if len(selected_song_rows) > 0:
+                fig = make_comparison_radar(
+                    avg_selected_song, song, radar_features, radar_labels,
+                )
+            else:
+                # If no seed songs were provided, just display the radar chart for the song
+                # Reusing make_radar_chart from lyrics_search.py logic, but customized here:
+                values = [song[f] for f in radar_features]
+                values.append(values[0])
+                labels_plot = list(radar_labels) + [radar_labels[0]]
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatterpolar(
+                    r=values, theta=labels_plot, fill="toself",
+                    fillcolor="rgba(168, 85, 247, 0.15)",
+                    line=dict(color="#a855f7", width=2),
+                    marker=dict(size=5, color="#a855f7"),
+                ))
+                fig.update_layout(
+                    polar=dict(
+                        radialaxis=dict(visible=True, range=[0, 1], showticklabels=False, gridcolor="#f0e6ff"),
+                        angularaxis=dict(gridcolor="#f0e6ff", linecolor="#f0e6ff"),
+                    ),
+                    showlegend=False,
+                    margin=dict(l=40, r=40, t=20, b=20),
+                    height=200,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                )
             st.plotly_chart(fig, use_container_width=True, key=f"compare_{rank}")
 
         with col_spotify:

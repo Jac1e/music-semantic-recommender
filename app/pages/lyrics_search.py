@@ -10,6 +10,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 from src.data_loader import load_spotify_with_lyrics
+from src.preprocess import clean_text
 
 st.set_page_config(page_title="Lyrics Search", page_icon="🔍", layout="wide")
 
@@ -775,14 +776,23 @@ radar_labels = ["Dance", "Energy", "Acoustic", "Valence", "Instrum.", "Speech"]
 
 if query and model is not None:
     with st.spinner("🎵 Searching through 29,000+ lyrics..."):
-        lyrics_embeddings = load_lyrics_embeddings()
-        if lyrics_embeddings is None:
-            # Fallback: compute on the fly if .npy file not found
-            lyrics_embeddings = model.encode(df["lyrics"].tolist(), batch_size=32,    show_progress_bar=False)
-        query_embedding = model.encode([query])
+        from src.similarity import MusicRecommender
+        @st.cache_resource
+        def get_recommender():
+            from src.data_loader import load_spotify_with_lyrics
+            raw_df = load_spotify_with_lyrics()
+            return MusicRecommender.fit(raw_df)
+            
+        recommender = get_recommender()
+        
+        # Pure Lyrics Search: Compute similarity on text embeddings ONLY (ignoring audio penalty)
+        query_text_vec = recommender.model.encode([clean_text(query)], convert_to_numpy=True)
+        db_features = recommender.features[:, recommender.numeric_feature_count:]
+        
         from sklearn.metrics.pairwise import cosine_similarity
-        scores = cosine_similarity(query_embedding, lyrics_embeddings)[0]
+        scores = cosine_similarity(query_text_vec, db_features)[0]
         raw_indices = np.argsort(scores)[::-1][:k * 3]
+            
         # Deduplicate by track_name + artists, keep highest scoring
         seen = set()
         top_indices = []

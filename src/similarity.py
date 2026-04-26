@@ -86,17 +86,57 @@ class MusicRecommender:
             result_columns=result_columns,
         )
 
-    def search(self, query: str | None = None, song_idx: int | None = None, k: int = 5) -> pd.DataFrame:
-        if query is None and song_idx is None:
+    def train_cross_modal_bridge(self):
+        """Train a regression model to predict audio features from lyrics embeddings."""
+        from sklearn.linear_model import Ridge
+        self.bridge_model = Ridge(alpha=1.0)
+        
+        numeric_features = self.features[:, :self.numeric_feature_count]
+        text_features = self.features[:, self.numeric_feature_count:]
+        
+        # Fit model: predict acoustic properties (Y) from semantic lyrics (X)
+        self.bridge_model.fit(text_features, numeric_features)
+
+    def search(
+        self, 
+        query: str | None = None, 
+        song_indices: list[int] | int | None = None, 
+        audio_query: str | None = None,
+        k: int = 5
+    ) -> pd.DataFrame:
+        if not query and not song_indices and not audio_query:
             return pd.DataFrame()
 
-        if query is not None:
-            query_vec = self.model.encode([clean_text(query)], convert_to_numpy=True)
-            query_vec = np.hstack([np.zeros((1, self.numeric_feature_count)), query_vec])
+        if query or audio_query:
+            # 1. Handle Lyrics Query
+            if query:
+                query_text_vec = self.model.encode([clean_text(query)], convert_to_numpy=True)
+            else:
+                # model embedding dimension is features.shape[1] - numeric_feature_count
+                emb_dim = self.features.shape[1] - self.numeric_feature_count
+                query_text_vec = np.zeros((1, emb_dim))
+
+            # 2. Handle Audio Vibe Query
+            if audio_query:
+                audio_query_text_vec = self.model.encode([clean_text(audio_query)], convert_to_numpy=True)
+                if not hasattr(self, 'bridge_model'):
+                    self.train_cross_modal_bridge()
+                query_audio_pred = self.bridge_model.predict(audio_query_text_vec)
+            else:
+                query_audio_pred = np.zeros((1, self.numeric_feature_count))
+
+            # Combine them
+            query_vec = np.hstack([query_audio_pred, query_text_vec])
         else:
-            if song_idx is None or song_idx < 0 or song_idx >= len(self.df):
-                raise IndexError(f"song_idx must be between 0 and {len(self.df) - 1}")
-            query_vec = self.features[song_idx].reshape(1, -1)
+            if isinstance(song_indices, int):
+                song_indices = [song_indices]
+            
+            valid_indices = [i for i in song_indices if 0 <= i < len(self.df)]
+            if not valid_indices:
+                raise IndexError(f"song_indices must be valid indices between 0 and {len(self.df) - 1}")
+            
+            # Compute the mean vector of the selected songs
+            query_vec = np.mean([self.features[i] for i in valid_indices], axis=0).reshape(1, -1)
 
         scores = cosine_similarity(query_vec, self.features)[0]
         idx = np.argsort(scores)[::-1][:k]
