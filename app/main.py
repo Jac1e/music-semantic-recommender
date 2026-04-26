@@ -262,7 +262,7 @@ with col2:
 with col3:
     st.markdown(
         """
-        <a href="explorer" target="_self" style="text-decoration: none; color: inherit; display: block;">
+        <a href="visualize" target="_self" style="text-decoration: none; color: inherit; display: block;">
             <div class="card-blue">
                 <div class="card-icon">📊</div>
                 <div class="card-title">Explore & Visualize</div>
