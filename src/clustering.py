@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, silhouette_samples
 from sklearn.mixture import GaussianMixture
 
@@ -19,14 +18,18 @@ from sklearn.mixture import GaussianMixture
 # ---------------------------------------------------------------------------
 # K-Means
 # ---------------------------------------------------------------------------
-
 def fit_kmeans(
     features: np.ndarray,
     n_clusters: int = 8,
     random_state: int = 42,
+    max_iter: int = 300,
+    tol: float = 1e-4,
+    n_init: int = 10,
     **kwargs,
-) -> KMeans:
-    """Fit a K-Means model on the feature matrix.
+):
+    """Fit a K-Means model from scratch using numpy.
+
+    Runs n_init independent trials and keeps the result with lowest inertia.
 
     Parameters
     ----------
@@ -36,19 +39,82 @@ def fit_kmeans(
         Number of clusters.
     random_state : int
         Random seed for reproducibility.
-    **kwargs
-        Extra keyword arguments forwarded to ``sklearn.cluster.KMeans``.
+    max_iter : int
+        Maximum number of iterations per trial.
+    tol : float
+        Convergence threshold — stops early if centroids move less than this.
+    n_init : int
+        Number of independent random restarts. Best result is kept.
 
     Returns
     -------
-    KMeans
-        The fitted KMeans estimator.
+    result
+        An object with .labels_ , .cluster_centers_ , and .inertia_
+        attributes — matching sklearn KMeans interface so the rest of
+        the codebase works unchanged.
     """
-    km = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10, **kwargs)
-    km.fit(features)
-    return km
+    from dataclasses import dataclass as _dataclass
 
+    @_dataclass
+    class _KMeansResult:
+        labels_: np.ndarray
+        cluster_centers_: np.ndarray
+        inertia_: float
+        n_clusters: int
 
+    rng = np.random.RandomState(random_state)
+
+    best_labels = None
+    best_centers = None
+    best_inertia = float("inf")
+
+    for _ in range(n_init):
+        # Step 1: randomly pick k samples as initial centroids
+        init_idx = rng.choice(len(features), size=n_clusters, replace=False)
+        centers = features[init_idx].copy().astype(float)
+
+        labels = np.zeros(len(features), dtype=int)
+
+        for _ in range(max_iter):
+            # Step 2: assign each point to nearest centroid
+            # Shape: (n_samples, n_clusters)
+            diffs = features[:, np.newaxis, :] - centers[np.newaxis, :, :]
+            distances = np.sqrt((diffs ** 2).sum(axis=2))
+            new_labels = np.argmin(distances, axis=1)
+
+            # Step 3: recompute centroids as mean of assigned points
+            new_centers = np.array([
+                features[new_labels == k].mean(axis=0) if (new_labels == k).any()
+                else centers[k]  # keep old center if cluster is empty
+                for k in range(n_clusters)
+            ])
+
+            # Step 4: check convergence
+            center_shift = np.sqrt(((new_centers - centers) ** 2).sum(axis=1)).max()
+            labels = new_labels
+            centers = new_centers
+
+            if center_shift < tol:
+                break
+
+        # Compute inertia (sum of squared distances to assigned centroid)
+        inertia = sum(
+            ((features[labels == k] - centers[k]) ** 2).sum()
+            for k in range(n_clusters)
+            if (labels == k).any()
+        )
+
+        if inertia < best_inertia:
+            best_inertia = inertia
+            best_labels = labels.copy()
+            best_centers = centers.copy()
+
+    return _KMeansResult(
+        labels_=best_labels,
+        cluster_centers_=best_centers,
+        inertia_=best_inertia,
+        n_clusters=n_clusters,
+    )
 # ---------------------------------------------------------------------------
 # Gaussian Mixture Model
 # ---------------------------------------------------------------------------
@@ -207,7 +273,7 @@ def assign_clusters_kmeans(
     n_clusters: int = 8,
     random_state: int = 42,
     label_column: str = "kmeans_cluster",
-) -> tuple[pd.DataFrame, KMeans]:
+) -> tuple[pd.DataFrame, object]:
     """Add a K-Means cluster label column to *df*.
 
     Returns the augmented DataFrame **and** the fitted KMeans model.
