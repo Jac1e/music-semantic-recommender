@@ -1,9 +1,11 @@
 # Music Semantic Recommender
 
 ## Project Overview
+
 Music Semantic Recommender is a web-based music exploration and recommendation system that helps users discover songs through both audio similarity and lyrical meaning. Given a song title or a natural-language description such as “sad but energetic” or “calm late-night vibe,” the application returns relevant tracks and visualizes how they relate to one another in a lower-dimensional latent space. The goal of the project is to make music recommendation more interpretable and interactive by combining audio-feature similarity with lyric-based semantic search.
 
 ## Dataset
+
 This project uses two datasets:
 
 1. **Spotify dataset (`spotify52kData.csv`)**
@@ -33,13 +35,16 @@ This project uses two datasets:
 After merging and preprocessing, the cleaned dataset is stored in `data/processed/`.
 
 ## Project Goals
+
 The system is designed to support several user-facing tasks:
+
 - find songs that are similar to a selected input song
 - explore clusters of related songs
 - visualize songs in a 2D or 3D latent space
 - search for songs using lyric meaning or mood-based text prompts
 
 ## Methods
+
 The project uses methods drawn from machine learning and representation learning:
 
 - **Preprocessing and feature engineering**
@@ -65,6 +70,7 @@ The project uses methods drawn from machine learning and representation learning
   - Semantic similarity between lyric representations and text queries
 
 ## Repository Structure
+
 ```text
 music-semantic-recommender/
 ├── README.md
@@ -117,25 +123,30 @@ music-semantic-recommender/
 ```
 
 ## Team Responsibilities
-- **Huajie Zeng** — Data preprocessing and song vector representation, including removing duplicates, standardizing numerical features, and constructing final song feature vectors.
-- **Jennifer Ran** — Cosine similarity and KNN retrieval to return the top-k most similar tracks for a given input song.
-- **Angela Gu** — PCA or deep autoencoder to project high-dimensional song features into a 2D or 3D latent space for visualization.
-- **Michael Wang** — k-means or Gaussian mixture model to group songs into clusters in the latent space.
-- **Leo Li** — Lyric embeddings, mood-related semantic extraction, and semantic search functionality.
+
+- **Huajie Zeng** — Data preprocessing and song vector representation, including removing duplicates, standardizing numerical audio features, and constructing final song feature vectors. Also contributed test coverage for preprocessing, similarity, and data merging.
+- **Jennifer Ran** — Streamlit frontend development across all four pages, dynamic mood theming, UI/UX design, integration of all backend modules, duplicate fix in recommendations, and k-means from scratch implementation.
+- **Angela Gu** — PCA dimensionality reduction pipeline in reduction.py and pre-scaled audio feature vectors used for visualization.
+- **Michael Wang** — Clustering module (k-means and GMM), cluster evaluation utilities (elbow method, silhouette analysis, BIC/AIC),clustering integration in the visualization page, advanced recommendation features, and preprocessing pipeline expansion.
+- **Leo Li** — Lyric text embeddings, sentence-transformer model integration, precomputed lyrics embeddings pipeline, and MusicRecommender backend combining audio and lyric features for semantic similarity search.
 
 ## Setup
+
 ### Option 1: pip
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Option 2: conda
+
 ```bash
 conda env create -f environment.yml
 conda activate music-semantic-recommender
 ```
 
 ## Running the App
+
 From the project root directory, run:
 
 ```bash
@@ -143,6 +154,7 @@ streamlit run app/main.py
 ```
 
 ## Precompute Lyrics Embeddings
+
 To avoid recomputing lyric embeddings at runtime, precompute them once and save to `data/processed/lyrics_embeddings.npy`:
 
 ```bash
@@ -157,12 +169,15 @@ python -m src.precompute_lyrics_embeddings --output data/processed/lyrics_embedd
 ```
 
 ## Expected Inputs and Outputs
+
 ### Inputs
+
 - a song title selected by the user
 - optional filters or settings
 - a natural-language lyric or mood query
 
 ### Outputs
+
 - recommended similar songs
 - nearest-neighbor retrieval results
 - cluster assignments
@@ -170,9 +185,11 @@ python -m src.precompute_lyrics_embeddings --output data/processed/lyrics_embedd
 - lyric-based semantic search results
 
 ## Current Status
-This repository currently contains the project structure, preprocessing pipeline, and placeholders or modules for retrieval, clustering, visualization, and semantic lyric search. The final system will integrate these components into a single interactive Streamlit application.
+
+The application is fully implemented. All backend modules are integrated into a working Streamlit app with four pages: a landing page, mood-based lyrics search, song recommendations, and an interactive visualization.
 
 ## Notes
+
 - The lyrics merge is based primarily on song title and may introduce mismatches for songs with identical names by different artists.
 - Processed data files should be stored in `data/processed/`.
 - Team members should keep module ownership clear, but the final application should be fully integrated and documented.
