@@ -23,9 +23,7 @@ st.markdown(
     }
     .main-header h1 {
         font-size: 3.5rem;
-        background: linear-gradient(120deg, #e84393 0%, #a855f7 50%, #6c5ce7 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #a855f7;
         font-weight: 800;
         margin-bottom: 0;
     }
@@ -139,9 +137,7 @@ st.markdown(
     .stat-number {
         font-size: 2rem;
         font-weight: 800;
-        background: linear-gradient(120deg, #e84393, #a855f7);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #e84393;
     }
     .stat-label {
         font-size: 0.9rem;
