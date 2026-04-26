@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Music Semantic Recommender is a web-based music exploration and recommendation system that helps users discover songs through both audio similarity and lyrical meaning. Given a song title or a natural-language description such as “sad but energetic” or “calm late-night vibe,” the application returns relevant tracks and visualizes how they relate to one another in a lower-dimensional latent space. The goal of the project is to make music recommendation more interpretable and interactive by combining audio-feature similarity with lyric-based semantic search.
+Music Semantic Recommender is a web-based music exploration and recommendation system that helps users discover songs through both audio similarity and lyrical meaning. Given a song title or a natural-language description such as “sad but energetic” or “calm late-night vibe,” the application returns relevant tracks and visualizes how they relate to one another in a lower-dimensional latent space. The goal of the project is to make music recommendations more interpretable and interactive by combining audio-feature similarity with lyric-based semantic search.
 
 ## Dataset
 
@@ -127,7 +127,7 @@ music-semantic-recommender/
 - **Huajie Zeng** — Data preprocessing and song vector representation, including removing duplicates, standardizing numerical audio features, and constructing final song feature vectors. Also contributed test coverage for preprocessing, similarity, and data merging.
 - **Jennifer Ran** — Streamlit frontend development across all four pages, dynamic mood theming, UI/UX design, integration of all backend modules, duplicate fix in recommendations, and k-means from scratch implementation.
 - **Angela Gu** — PCA dimensionality reduction pipeline in reduction.py and pre-scaled audio feature vectors used for visualization.
-- **Michael Wang** — Clustering module (k-means and GMM), cluster evaluation utilities (elbow method, silhouette analysis, BIC/AIC),clustering integration in the visualization page, advanced recommendation features, and preprocessing pipeline expansion.
+- **Michael Wang** — Clustering module (k-means and GMM), cluster evaluation utilities (elbow method, silhouette analysis, BIC/AIC), clustering integration in the visualization page, advanced recommendation features, and preprocessing pipeline expansion.
 - **Leo Li** — Lyric text embeddings, sentence-transformer model integration, precomputed lyrics embeddings pipeline, and MusicRecommender backend combining audio and lyric features for semantic similarity search.
 
 ## Setup
@@ -186,7 +186,7 @@ python -m src.precompute_lyrics_embeddings --output data/processed/lyrics_embedd
 
 ## Current Status
 
-The application is fully implemented. All backend modules are integrated into a working Streamlit app with four pages: a landing page, mood-based lyrics search, song recommendations, and an interactive visualization.
+The application is fully implemented. All backend modules are integrated into a working Streamlit app with four pages: a landing page, a mood-based lyrics search, song recommendations, and an interactive visualization.
 
 ## Notes
 
