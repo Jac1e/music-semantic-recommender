@@ -226,15 +226,17 @@ col1, col2, col3 = st.columns(3, gap="large")
 with col1:
     st.markdown(
         """
-        <div class="card-pink">
-            <div class="card-icon">🔍</div>
-            <div class="card-title">Mood Search</div>
-            <div class="card-desc">
-                Describe a vibe in your own words — <em>"mellow jazz for 
-                cooking dinner"</em> — and we'll find songs whose lyrics 
-                match your mood.
+        <a href="lyrics_search" target="_self" style="text-decoration: none; color: inherit; display: block;">
+            <div class="card-pink">
+                <div class="card-icon">🔍</div>
+                <div class="card-title">Mood Search</div>
+                <div class="card-desc">
+                    Describe a vibe in your own words — <em>"mellow jazz for 
+                    cooking dinner"</em> — and we'll find songs whose lyrics 
+                    match your mood.
+                </div>
             </div>
-        </div>
+        </a>
         """,
         unsafe_allow_html=True,
     )
@@ -242,15 +244,17 @@ with col1:
 with col2:
     st.markdown(
         """
-        <div class="card-purple">
-            <div class="card-icon">🎧</div>
-            <div class="card-title">Similar Songs</div>
-            <div class="card-desc">
-                Pick a song you love, and we'll find tracks that sound 
-                like it — matched by danceability, energy, tempo, valence, 
-                and more.
+        <a href="recommend" target="_self" style="text-decoration: none; color: inherit; display: block;">
+            <div class="card-purple">
+                <div class="card-icon">🎧</div>
+                <div class="card-title">Similar Songs</div>
+                <div class="card-desc">
+                    Pick a song you love, and we'll find tracks that sound 
+                    like it — matched by danceability, energy, tempo, valence, 
+                    and more.
+                </div>
             </div>
-        </div>
+        </a>
         """,
         unsafe_allow_html=True,
     )
@@ -258,15 +262,17 @@ with col2:
 with col3:
     st.markdown(
         """
-        <div class="card-blue">
-            <div class="card-icon">📊</div>
-            <div class="card-title">Explore & Visualize</div>
-            <div class="card-desc">
-                See how 52,000 songs relate to each other in an interactive 
-                2D map. Filter by genre, discover clusters, and find hidden 
-                connections.
+        <a href="explorer" target="_self" style="text-decoration: none; color: inherit; display: block;">
+            <div class="card-blue">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Explore & Visualize</div>
+                <div class="card-desc">
+                    See how 52,000 songs relate to each other in an interactive 
+                    2D map. Filter by genre, discover clusters, and find hidden 
+                    connections.
+                </div>
             </div>
-        </div>
+        </a>
         """,
         unsafe_allow_html=True,
     )
