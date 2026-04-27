@@ -52,14 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
 def load_lyrics_texts() -> list[str]:
     """Load lyrics in the same row order used by current app-level lyrics filtering."""
     df = load_spotify_with_lyrics()
-    if "lyrics" not in df.columns:
+    if "lyrics" not in df.columns: # Ensure the dataset contains a 'lyrics' column
         raise ValueError("Expected a 'lyrics' column in processed dataset.")
 
-    lyrics_series = df[df["lyrics"].notna()]["lyrics"].astype(str)
-    lyrics = lyrics_series.tolist()
-    if not lyrics:
+    lyrics_series = df[df["lyrics"].notna()]["lyrics"].astype(str)# Filter out rows with missing lyrics and convert them to strings
+    lyrics = lyrics_series.tolist()# Convert the cleaned lyrics column into a list of strings
+    if not lyrics:# Ensure there is at least one valid lyric entry
         raise ValueError("No non-null lyrics found in processed dataset.")
-    return lyrics
+    return lyrics# Return list of lyrics in consistent row order (for embedding alignment)
 
 
 def precompute_lyrics_embeddings(
@@ -69,20 +69,20 @@ def precompute_lyrics_embeddings(
     show_progress_bar: bool = True,
 ) -> tuple[int, int, Path]:
     """Generate and persist embeddings; returns (rows, dimensions, output_path)."""
-    output_path = output_path.resolve()
+    output_path = output_path.resolve()# Resolve absolute path and ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    lyrics = load_lyrics_texts()
-    model = load_embedding_model(model_name=model_name)
+    lyrics = load_lyrics_texts() # Load cleaned lyrics in consistent order (for alignment with dataset)
+    model = load_embedding_model(model_name=model_name) # Load sentence-transformer model for embedding generation
     embeddings = embed_texts(
         lyrics,
         model=model,
         batch_size=batch_size,
         show_progress_bar=show_progress_bar,
-    )
+    )# Convert lyrics into embedding vectors (batched for efficiency)
 
     np.save(output_path, embeddings)
-    rows, dims = embeddings.shape
+    rows, dims = embeddings.shape# Extract shape information
     return rows, dims, output_path
 
 
