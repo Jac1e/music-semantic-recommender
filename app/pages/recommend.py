@@ -258,7 +258,7 @@ def get_spotify_search_url(track_name, artist):
 
 # Song selector
 selected_songs = st.multiselect(
-    "Choose up to 5 songs to blend their vibes (Optional):",
+    "Choose up to 5 songs to blend their vibes:",
     options=df["display_name"].tolist(),
     max_selections=5,
     placeholder="Start typing song or artist names...",
@@ -267,9 +267,9 @@ selected_songs = st.multiselect(
 col_toggle, col_vibe = st.columns([1, 1])
 with col_toggle:
     st.markdown("<br>", unsafe_allow_html=True)
-    use_pure_audio = st.toggle("Pure Audio Recommendation (Ignores lyrics, includes Classical)", value=True)
+    use_pure_audio = st.toggle("Ignore lyrics", value=True)
 with col_vibe:
-    vibe_modifier = st.text_input("AI Vibe Modifier (Optional)", placeholder="e.g., calm piano, high energy...", key="vibe_modifier")
+    vibe_modifier = st.text_input("Input a musical vibe", placeholder="e.g., calm piano, high energy...", key="vibe_modifier")
 
 col_slider, col_spacer = st.columns([1, 3])
 with col_slider:
