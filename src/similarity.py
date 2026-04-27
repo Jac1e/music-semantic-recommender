@@ -10,8 +10,8 @@ from sklearn.preprocessing import StandardScaler
 from .data_loader import PROJECT_ROOT
 from .preprocess import clean_text, prepare_lyrics
 from .text_embed import load_embedding_model
-
-
+# Default set of audio features used to represent each song.
+# These are acoustic attributes extracted from the audio signal.
 DEFAULT_NUMERIC_COLUMNS = [
     "danceability",
     "energy",
@@ -26,8 +26,8 @@ DEFAULT_NUMERIC_COLUMNS = [
     "tempo",
 ]
 
-DEFAULT_RESULT_COLUMNS = ["track_name", "artists", "track_genre"]
-DEFAULT_LYRICS_EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "processed" / "lyrics_embeddings.npy"
+DEFAULT_RESULT_COLUMNS = ["track_name", "artists", "track_genre"]# Columns to include in the final recommendation output.
+DEFAULT_LYRICS_EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "processed" / "lyrics_embeddings.npy"# Default file path for loading precomputed lyric embeddings.
 
 
 @dataclass
@@ -46,17 +46,17 @@ class MusicRecommender:
         result_columns: list[str] | None = None,
         model_name: str = "all-MiniLM-L6-v2",
         lyrics_embeddings_path: str | Path = DEFAULT_LYRICS_EMBEDDINGS_PATH,
-    ) -> "MusicRecommender":
+    ) -> "MusicRecommender":# Use default configurations if none are provided
         numeric_columns = numeric_columns or DEFAULT_NUMERIC_COLUMNS
         result_columns = result_columns or DEFAULT_RESULT_COLUMNS
 
-        prepared = prepare_lyrics(df)
-        numeric_data = prepared[numeric_columns].fillna(0)
+        prepared = prepare_lyrics(df)# Preprocess dataset
+        numeric_data = prepared[numeric_columns].fillna(0)# Extract selected audio features and fill missing values
 
-        scaler = StandardScaler()
+        scaler = StandardScaler() # Standardize audio features to ensure comparable scale
         numeric_features = scaler.fit_transform(numeric_data)
 
-        embeddings_path = Path(lyrics_embeddings_path).resolve()
+        embeddings_path = Path(lyrics_embeddings_path).resolve()# Resolve path to precomputed lyric embeddings
         if not embeddings_path.exists():
             raise FileNotFoundError(
                 f"Precomputed lyrics embeddings not found: {embeddings_path}. "
@@ -64,26 +64,26 @@ class MusicRecommender:
             )
 
         text_features = np.load(embeddings_path)
-        if text_features.ndim != 2:
+        if text_features.ndim != 2:# Embedding should be 2D: each row represents a song, each column is a feature dimention
             raise ValueError(
                 f"Expected 2D lyrics embeddings, got shape {text_features.shape} at {embeddings_path}."
             )
-        if text_features.shape[0] != len(prepared):
+        if text_features.shape[0] != len(prepared):# Ensure the number of embeddings matches the number of songs
             raise ValueError(
                 "Lyrics embedding row count does not match prepared dataset rows. "
                 f"Embeddings rows={text_features.shape[0]}, prepared rows={len(prepared)}. "
                 "Regenerate the .npy file from the same processed dataset."
             )
 
-        model = load_embedding_model(model_name)
-
+        model = load_embedding_model(model_name)# Load sentence-transformer model for encoding user queries
+        # Combine audio features and lyric embeddings into a unified feature matrix, each row represents a song with both acoustic and semantic information
         features = np.hstack([numeric_features, text_features])
         return cls(
-            df=prepared,
-            features=features,
-            model=model,
-            numeric_feature_count=numeric_features.shape[1],
-            result_columns=result_columns,
+            df=prepared,# Preprocessed dataset
+            features=features,# Combined feature matrix (audio + text)
+            model=model,# Embedding model for query encoding
+            numeric_feature_count=numeric_features.shape[1],# Number of audio features
+            result_columns=result_columns, # Columns to display in results
         )
 
     def train_cross_modal_bridge(self):
@@ -137,11 +137,11 @@ class MusicRecommender:
             
             # Compute the mean vector of the selected songs
             query_vec = np.mean([self.features[i] for i in valid_indices], axis=0).reshape(1, -1)
-
+        # Compute cosine similarity between the query vector and all song feature vectors
         scores = cosine_similarity(query_vec, self.features)[0]
-        idx = np.argsort(scores)[::-1][:k]
+        idx = np.argsort(scores)[::-1][:k]# Get indices of top-k most similar songs (sorted in descending order)
 
         columns = [col for col in self.result_columns if col in self.df.columns]
-        result = self.df.iloc[idx][columns].copy()
-        result["score"] = scores[idx]
+        result = self.df.iloc[idx][columns].copy()# Retrieve the top-k songs from the dataset based on similarity ranking
+        result["score"] = scores[idx]# Attach similarity scores to the result
         return result.reset_index(drop=True)
