@@ -305,6 +305,7 @@ selected_songs = st.multiselect(
     max_selections=5,
     placeholder="Start typing song or artist names...",
 )
+st.caption("🎵 Our dataset includes 52,000 Spotify songs. If a song doesn't appear, it may not be in our collection — try a different song or artist.")
 
 col_toggle, col_vibe = st.columns([1, 1])
 with col_toggle:
